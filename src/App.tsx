@@ -1,21 +1,38 @@
 import { useState } from "react";
 import "./styles/global.css";
+import { Form } from "./components/Form";
+import { PlusCircle, XCircle } from "lucide-react";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, FormProvider } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const fileSize = 10;
+const fileSizeInMb = 10;
+const fileSize = fileSizeInMb * 1024 * 1024;
 
 const createUserFormSchema = z
   .object({
     avatar: z
       .instanceof(FileList)
-      .transform((list) => list.item(0)!)
-      .refine(
-        (file) => file.size <= fileSize * 1024 * 1024,
-        `The file must be a maximum of ${fileSize}Mb`
-      ),
+      .transform((list) => list.item(0))
+      .superRefine((file, ctx) => {
+        if (!file) {
+          return ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `The avatar image is required.`,
+          });
+        }
+
+        if (file.size > fileSize) {
+          return ctx.addIssue({
+            code: z.ZodIssueCode.too_big,
+            maximum: fileSize,
+            type: "array",
+            inclusive: true,
+            message: `The file must be a maximum of ${fileSizeInMb}Mb`,
+          });
+        }
+      }),
     name: z
       .string()
       .nonempty("Name is required")
@@ -62,14 +79,22 @@ type CreateUserFormData = z.infer<typeof createUserFormSchema>;
 
 export function App() {
   const [output, setOutput] = useState("");
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    control,
-  } = useForm<CreateUserFormData>({
+  const createUserForm = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserFormSchema),
   });
+
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+    control,
+    watch,
+  } = createUserForm;
+
+  const userPassword = watch("password");
+
+  const isPasswordStrong = new RegExp(
+    "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])(?=.{8,})"
+  ).test(userPassword);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -87,128 +112,109 @@ export function App() {
   }
 
   return (
-    <main className="flex h-full min-h-screen items-center justify-center bg-zinc-50">
-      <form
-        onSubmit={handleSubmit(createUser)}
-        className="flex w-full max-w-xs flex-col gap-4"
-      >
-        <div className="flex flex-col gap-1">
-          <label htmlFor="avatar">Avatar</label>
-          <input type="file" accept="image/*" {...register("avatar")} />
-          {errors.avatar && (
-            <span className="text-sm text-red-500">
-              {errors.avatar.message}
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="name">Name</label>
-          <input
-            type="text"
-            className="h-10 rounded border border-zinc-200 px-3 shadow-sm"
-            {...register("name")}
-          />
-          {errors.name && (
-            <span className="text-sm text-red-500">{errors.name.message}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email">E-mail</label>
-          <input
-            type="email"
-            className="h-10 rounded border border-zinc-200 px-3 shadow-sm"
-            {...register("email")}
-          />
-          {errors.email && (
-            <span className="text-sm text-red-500">{errors.email.message}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            className="h-10 rounded border border-zinc-200 px-3 shadow-sm"
-            {...register("password")}
-          />
-          {errors.password && (
-            <span className="text-sm text-red-500">
-              {errors.password.message}
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="confirmPassword">Confirm password</label>
-          <input
-            type="password"
-            className="h-10 rounded border border-zinc-200 px-3 shadow-sm"
-            {...register("confirmPassword")}
-          />
-          {errors.confirmPassword && (
-            <span className="text-sm text-red-500">
-              {errors.confirmPassword.message}
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="" className="flex items-center justify-between">
-            Techs
-            <button
-              type="button"
-              onClick={addNewTech}
-              className="text-sm text-emerald-500"
-            >
-              Adicionar
-            </button>
-          </label>
-          {fields.map((field, i) => {
-            return (
-              <div key={field.id} className="flex gap-2">
-                <div className="flex flex-1 flex-col gap-1">
-                  <input
-                    type="text"
-                    className="h-10  rounded border border-zinc-200 px-3 shadow-sm"
-                    {...register(`techs.${i}.title`)}
-                  />
-                  {errors.techs?.[i]?.title && (
-                    <span className="text-sm text-red-500">
-                      {errors.techs?.[i]?.title?.message}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <input
-                    type="number"
-                    className="h-10 w-20 rounded border border-zinc-200 px-3 shadow-sm"
-                    {...register(`techs.${i}.knowledge`)}
-                  />
-                  {errors.techs?.[i]?.knowledge && (
-                    <span className="text-sm text-red-500">
-                      {errors.techs?.[i]?.knowledge?.message}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {errors.techs && (
-            <span className="text-sm text-red-500">{errors.techs.message}</span>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          className="h-10 rounded bg-emerald-500 font-semibold text-white transition duration-300 hover:bg-emerald-600"
+    <main className="flex h-full my-5 min-h-screen items-center justify-center bg-zinc-50">
+      <FormProvider {...createUserForm}>
+        <form
+          onSubmit={handleSubmit(createUser)}
+          className="flex w-full max-w-xs flex-col gap-4"
         >
-          Salvar
-        </button>
-        <pre>{output}</pre>
-      </form>
+          <Form.Field>
+            <Form.Label htmlFor="avatar">
+              Avatar
+              <span className="text-xs">{`Max size ${fileSizeInMb}Mb`}</span>
+            </Form.Label>
+            <Form.Input
+              name="avatar"
+              type="file"
+              accept="image/*"
+              className=""
+            />
+            <Form.ErrorMessage field="avatar" />
+          </Form.Field>
+
+          <Form.Field>
+            <Form.Label htmlFor="name">Name</Form.Label>
+            <Form.Input type="text" name="name" />
+            <Form.ErrorMessage field="name" />
+          </Form.Field>
+
+          <Form.Field>
+            <Form.Label htmlFor="email">E-mail</Form.Label>
+            <Form.Input type="email" name="email" />
+            <Form.ErrorMessage field="email" />
+          </Form.Field>
+
+          <Form.Field>
+            <Form.Label htmlFor="password">
+              Password
+              {isPasswordStrong ? (
+                <span className="text-xs text-emerald-600">
+                  strong password
+                </span>
+              ) : (
+                <span className="text-xs text-red-500">weak password</span>
+              )}
+            </Form.Label>
+            <Form.Input type="password" name="password" />
+            <Form.ErrorMessage field="password" />
+          </Form.Field>
+
+          <Form.Field>
+            <Form.Label htmlFor="confirmPassword">Confirm password</Form.Label>
+            <Form.Input type="password" name="confirmPassword" />
+            <Form.ErrorMessage field="confirmPassword" />
+          </Form.Field>
+
+          <Form.Field>
+            <Form.Label htmlFor="">
+              Techs
+              <button
+                type="button"
+                onClick={addNewTech}
+                className="flex items-center gap-1 text-xs font-semibold text-emerald-500"
+              >
+                Add new
+                <PlusCircle size={16} />
+              </button>
+            </Form.Label>
+            {fields.map((field, i) => {
+              return (
+                <div key={field.id} className="flex flex-row gap-2">
+                  <Form.Field>
+                    <Form.Input type="text" name={`techs.${i}.title`} />
+                    <Form.ErrorMessage field={`techs.${i}.title`} />
+                  </Form.Field>
+
+                  <Form.Field>
+                    <Form.Input type="number" name={`techs.${i}.knowledge`} />
+                    <Form.ErrorMessage field={`techs.${i}.knowledge`} />
+                  </Form.Field>
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="text-red-500"
+                  >
+                    <XCircle size={14} />
+                  </button>
+                </div>
+              );
+            })}
+            <Form.ErrorMessage field="techs" />
+          </Form.Field>
+
+          <button
+            type="submit"
+            className="h-10 rounded bg-emerald-500 font-semibold text-white transition duration-300 hover:bg-emerald-600"
+          >
+            Salvar
+          </button>
+          {output && (
+            <pre className="rounded-lg bg-zinc-800 p-6 text-sm text-zinc-100">
+              {output}
+            </pre>
+          )}
+        </form>
+      </FormProvider>
     </main>
   );
 }
