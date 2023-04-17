@@ -102,21 +102,20 @@ export function App() {
   });
 
   function addNewTech() {
-    append({ title: "", knowledge: 1 });
+    append({ title: "", knowledge: 0 });
   }
 
   function createUser(data: CreateUserFormData) {
-    // Handle upload here
     console.log(data.avatar);
     setOutput(JSON.stringify(data, null, 2));
   }
 
   return (
-    <main className="flex h-full my-5 min-h-screen items-center justify-center bg-zinc-50">
+    <main className="my-5 flex h-full min-h-screen items-center justify-center bg-zinc-50">
       <FormProvider {...createUserForm}>
         <form
           onSubmit={handleSubmit(createUser)}
-          className="flex w-full max-w-xs flex-col gap-4"
+          className="flex w-full max-w-sm flex-col gap-4"
         >
           <Form.Field>
             <Form.Label htmlFor="avatar">
@@ -134,13 +133,13 @@ export function App() {
 
           <Form.Field>
             <Form.Label htmlFor="name">Name</Form.Label>
-            <Form.Input type="text" name="name" />
+            <Form.Input type="text" name="name" placeholder="Name" />
             <Form.ErrorMessage field="name" />
           </Form.Field>
 
           <Form.Field>
             <Form.Label htmlFor="email">E-mail</Form.Label>
-            <Form.Input type="email" name="email" />
+            <Form.Input type="email" name="email" placeholder="E-mail" />
             <Form.ErrorMessage field="email" />
           </Form.Field>
 
@@ -155,13 +154,21 @@ export function App() {
                 <span className="text-xs text-red-500">weak password</span>
               )}
             </Form.Label>
-            <Form.Input type="password" name="password" />
+            <Form.Input
+              type="password"
+              name="password"
+              placeholder="Password"
+            />
             <Form.ErrorMessage field="password" />
           </Form.Field>
 
           <Form.Field>
             <Form.Label htmlFor="confirmPassword">Confirm password</Form.Label>
-            <Form.Input type="password" name="confirmPassword" />
+            <Form.Input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm password"
+            />
             <Form.ErrorMessage field="confirmPassword" />
           </Form.Field>
 
@@ -178,23 +185,37 @@ export function App() {
               </button>
             </Form.Label>
             {fields.map((field, i) => {
+              const techName = `techs.${i}.title`;
+              const knowledgeName = `techs.${i}.knowledge`;
+
               return (
-                <div key={field.id} className="flex flex-row gap-2">
+                <div
+                  key={field.id}
+                  className="flex flex-row items-center gap-2"
+                >
                   <Form.Field>
-                    <Form.Input type="text" name={`techs.${i}.title`} />
-                    <Form.ErrorMessage field={`techs.${i}.title`} />
+                    <Form.Input
+                      type="text"
+                      name={techName}
+                      placeholder="Name"
+                    />
+                    <Form.ErrorMessage field={techName} />
                   </Form.Field>
 
                   <Form.Field>
-                    <Form.Input type="number" name={`techs.${i}.knowledge`} />
-                    <Form.ErrorMessage field={`techs.${i}.knowledge`} />
+                    <Form.Input
+                      type="number"
+                      name={knowledgeName}
+                      placeholder="0-100"
+                    />
+                    <Form.ErrorMessage field={knowledgeName} />
                   </Form.Field>
                   <button
                     type="button"
                     onClick={() => remove(i)}
                     className="text-red-500"
                   >
-                    <XCircle size={14} />
+                    <XCircle size={16} />
                   </button>
                 </div>
               );
@@ -204,9 +225,10 @@ export function App() {
 
           <button
             type="submit"
+            disabled={isSubmitting}
             className="h-10 rounded bg-emerald-500 font-semibold text-white transition duration-300 hover:bg-emerald-600"
           >
-            Salvar
+            Save
           </button>
           {output && (
             <pre className="rounded-lg bg-zinc-800 p-6 text-sm text-zinc-100">
